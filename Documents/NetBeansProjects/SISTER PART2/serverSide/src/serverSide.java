@@ -27,6 +27,12 @@ public class serverSide extends Listener
     
     static int udpServer=44444,tcpServer=44444;
     
+    static int startToken=0;
+    static int endToken=0;
+    
+    static int maxSize = 0;
+    static String IPmaxSize = "";
+    
     static int statusServer=0;
     //representasi database dengan struktur HashMap<NamaTabel, Isi tabel>
     HashMap<String,HashMap<String, ArrayList<String>>> database=new HashMap<>();
@@ -67,7 +73,7 @@ public class serverSide extends Listener
         
         //start server
         server1.start();
-        
+
         //tambahin listener
         server1.addListener(new serverSide());
         
@@ -85,7 +91,7 @@ public class serverSide extends Listener
 
         ArrayList<String> ip=new ArrayList<>(); 
         ip.add("192.168.0.102");
-        ip.add("127.0.0.1");
+        ip.add("192.168.0.101");
         
         
         //Mencoba melakukan koneksi dengan server jika gagal atau server masih belum nyala
@@ -94,20 +100,17 @@ public class serverSide extends Listener
         {
 
                 try 
-                {
+                {              
                     client.connect(5000, ip.get(i), tcpServer, udpServer);
                     // minta data
-                    if (!ip.get(i).equals(client.getRemoteAddressTCP().getAddress().getHostAddress()))
-                    {
-                           //Buat sebuah paket message
-                           PacketMessage packetMessage = new PacketMessage();
+                       //Buat sebuah paket message
+                    PacketMessage packetMessage = new PacketMessage();
 
-                           //Buat sebuah pesannya
-                           packetMessage.message = "get";
-                           //c.sendTCP(packetMessage);
-                           client.sendTCP(packetMessage);
-                    }
-                    
+                    //Buat sebuah pesannya
+                    packetMessage.message = "size";
+
+                    //Kirim pesannya
+                    client.sendTCP(packetMessage);
                 }
                 catch (Exception e) 
                 {
@@ -115,7 +118,26 @@ public class serverSide extends Listener
                 }
 
         }
+        if (maxSize == 0)
+        {
+            startToken=0;
+            endToken=(int) Math.pow(2, 31);
+        }
+        else
+        {
+                    client.connect(5000, IPmaxSize, tcpServer, udpServer);
+                    // minta data
+                       //Buat sebuah paket message
+                    PacketMessage packetMessage = new PacketMessage();
+
+                    //Buat sebuah pesannya
+                    packetMessage.message = "get";
+
+                    //Kirim pesannya
+                    client.sendTCP(packetMessage);
+        }
         client.addListener(new serverSide());
+        System.out.println(startToken+" "+endToken);
     }
     
     //Ini dijalankan kalo dapet koneksi
@@ -129,6 +151,10 @@ public class serverSide extends Listener
     //Ini dijalankan saat kita menerima paket
     public void received (Connection c, Object p)
     {
+        if(p instanceof HashMap)
+        {
+            database=(HashMap<String, HashMap<String, ArrayList<String>>>) p;
+        }
         if(p instanceof PacketMessage)
 		{
 			PacketMessage packet = (PacketMessage) p;
@@ -170,6 +196,41 @@ public class serverSide extends Listener
                         else if(parse[0].toLowerCase().equals("display") && parse[1].toLowerCase().equals("all") && parse.length==3 && cek)
                         {
                             displayAllTable(parse[2], c);
+                        }
+                        else if(parse[0].equals("size") && parse.length==1)
+                        {
+                            packet.message="size "+(endToken-startToken)+" "+endToken;
+                            c.sendTCP(packet);
+                        }
+                        else if(parse[0].equals("size") && parse.length==3)
+                        {
+                            if(maxSize>Integer.parseInt(parse[1]))
+                            {
+                                maxSize=Integer.parseInt(parse[1]);
+                                IPmaxSize=c.getRemoteAddressTCP().getHostString();
+                                endToken=Integer.parseInt(parse[2]);
+                                startToken=Integer.parseInt(parse[1])/2;
+                            }
+                            
+                        }
+                        else if(parse[0].equals("get") && parse.length==1)
+                        {
+                            endToken=(endToken-startToken)/2;
+                            HashMap<String,HashMap<String, ArrayList<String>>> databaseKirim=database;
+                            for (Map.Entry<String,HashMap<String, ArrayList<String>>> entry : databaseKirim.entrySet()) {
+                                for (Map.Entry<String, ArrayList<String>> entry1 : entry.getValue().entrySet()) {
+                                    int code = Math.abs(entry1.getKey().hashCode());
+                                    if (code >= startToken && code < endToken)
+                                    {
+                                        databaseKirim.get(entry.getKey()).remove(entry1.getKey());
+                                    }
+                                    else
+                                    {
+                                        database.get(entry.getKey()).remove(entry1.getKey());
+                                    }
+                                }
+                            }
+                            c.sendTCP(databaseKirim);
                         }
                         //kalau semua command tidak tepat
                         else
@@ -263,7 +324,7 @@ public class serverSide extends Listener
            {
             //menggunakan sizeLIst bertujuan agar dapat mengambil data dengan timestamp terbaru
             int sizeList=entry.getValue().size();
-            Mess = Mess + entry.getKey() + " " + entry.getValue().get(sizeList-2) + " " + entry.getValue().get(sizeList-1) + "\n" ;
+            Mess = Mess + entry.getKey().hashCode() + " " + entry.getValue().get(sizeList-2) + " " + entry.getValue().get(sizeList-1) + "\n" ;
            }
            
            //Buat sebuah paket message
