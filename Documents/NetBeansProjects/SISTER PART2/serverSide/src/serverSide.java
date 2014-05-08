@@ -30,6 +30,8 @@ public class serverSide extends Listener
     static int startToken=0;
     static int endToken=0;
     
+    static int counter = 0;
+    
     static int maxSize = 0;
     static String IPmaxSize = "";
     
@@ -104,6 +106,7 @@ public class serverSide extends Listener
                     client.connect(5000, ip.get(i), tcpServer, udpServer);
                     // minta data
                        //Buat sebuah paket message
+                    counter++;
                     PacketMessage packetMessage = new PacketMessage();
 
                     //Buat sebuah pesannya
@@ -111,12 +114,16 @@ public class serverSide extends Listener
 
                     //Kirim pesannya
                     client.sendTCP(packetMessage);
+                    
                 }
                 catch (Exception e) 
                 {
                     System.out.println("Server "+ip.get(i)+" belum siap");
                 }
 
+        }
+        while (counter != 1) {
+             Thread.sleep(1000);
         }
         if (maxSize == 0)
         {
@@ -204,14 +211,14 @@ public class serverSide extends Listener
                         }
                         else if(parse[0].equals("size") && parse.length==3)
                         {
-                            if(maxSize>Integer.parseInt(parse[1]))
+                            if(maxSize<Integer.parseInt(parse[1]))
                             {
                                 maxSize=Integer.parseInt(parse[1]);
                                 IPmaxSize=c.getRemoteAddressTCP().getHostString();
                                 endToken=Integer.parseInt(parse[2]);
                                 startToken=Integer.parseInt(parse[1])/2;
                             }
-                            
+                            counter--;
                         }
                         else if(parse[0].equals("get") && parse.length==1)
                         {
