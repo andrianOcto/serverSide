@@ -67,7 +67,7 @@ public class serverSide extends Listener
         //akan menampilkan pesan
         try 
         {
-            //client.connect(5000, ip, tcpServer, udpServer);
+            client.connect(5000, ip, tcpServer, udpServer);
             client.connect(5000, ip2, tcpPort, udpPort);
             System.out.println("Menunggu paket dari server\n");
         } 
@@ -324,7 +324,6 @@ public class serverSide extends Listener
 
             //Kirim pesannya
             client.sendTCP(packetMessage);
-            feswfwsefsfese;
             
         }
     }
