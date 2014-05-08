@@ -32,13 +32,15 @@ public class serverSide extends Listener
     HashMap<String,HashMap<String, ArrayList<String>>> database=new HashMap<>();
     public static void main(String[] args) throws Exception
     {
+        //  HIDUPIN SERVER BUAT DENGERIN CLIENT
+        
         //server inisialisasi
         server = new Server();
 
         //register packet class
         server.getKryo().register(PacketMessage.class);
         
-        //binding port ke server
+        //binding port ke port client
         server.bind(tcpPort, udpPort);
         
         //start server
@@ -47,9 +49,29 @@ public class serverSide extends Listener
         //tambahin listener
         server.addListener(new serverSide());
         
-        System.out.println("Server is started");
+        System.out.println("Server ngedengerin client");
         
+        //  HIDUPIN SERVER BUAT DENGERIN SESAMA SERVER
         
+        Server server1;
+        //server inisialisasi
+        server1 = new Server();
+
+        //register packet class
+        server1.getKryo().register(PacketMessage.class);
+        
+        //binding port ke port server
+        server1.bind(tcpServer, udpServer);
+        
+        //start server
+        server1.start();
+        
+        //tambahin listener
+        server1.addListener(new serverSide());
+        
+        System.out.println("Server ngedengerin sesama server");
+        
+        //  HIDUPIN CLIENT
         
         client = new Client();
 
@@ -62,13 +84,12 @@ public class serverSide extends Listener
         String ip = "192.168.0.102";
         String ip2 = "127.0.0.1";
        
-
         //Mencoba melakukan koneksi dengan server jika gagal atau server masih belum nyala
         //akan menampilkan pesan
         try 
         {
             client.connect(5000, ip, tcpServer, udpServer);
-            client.connect(5000, ip2, tcpPort, udpPort);
+            //client.connect(5000, ip2, tcpPort, udpPort);
             System.out.println("Menunggu paket dari server\n");
         } 
         catch (Exception e) 
