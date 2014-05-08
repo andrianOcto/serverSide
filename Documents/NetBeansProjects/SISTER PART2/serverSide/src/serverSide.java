@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -100,7 +102,7 @@ public class serverSide extends Listener
         //akan menampilkan pesan
         for (int i = 0; i < ip.size(); i++)
         {
-
+           
                 try 
                 {              
                     client.connect(5000, ip.get(i), tcpServer, udpServer);
@@ -115,34 +117,20 @@ public class serverSide extends Listener
                     //Kirim pesannya
                     client.sendTCP(packetMessage);
                     
+                
                 }
                 catch (Exception e) 
                 {
                     System.out.println("Server "+ip.get(i)+" belum siap");
                 }
-
+            
         }
-        while (counter != 1) {
-             Thread.sleep(1000);
-        }
-        if (maxSize == 0)
-        {
-            startToken=0;
-            endToken=(int) Math.pow(2, 31);
-        }
-        else
-        {
-                    client.connect(5000, IPmaxSize, tcpServer, udpServer);
-                    // minta data
-                       //Buat sebuah paket message
-                    PacketMessage packetMessage = new PacketMessage();
-
-                    //Buat sebuah pesannya
-                    packetMessage.message = "get";
-
-                    //Kirim pesannya
-                    client.sendTCP(packetMessage);
-        }
+        //while (counter != 1) {
+             
+        //}
+        System.out.print(counter);
+        
+       
         client.addListener(new serverSide());
         System.out.println(startToken+" "+endToken);
     }
@@ -211,6 +199,7 @@ public class serverSide extends Listener
                         }
                         else if(parse[0].equals("size") && parse.length==3)
                         {
+                            
                             if(maxSize<Integer.parseInt(parse[1]))
                             {
                                 maxSize=Integer.parseInt(parse[1]);
@@ -218,7 +207,36 @@ public class serverSide extends Listener
                                 endToken=Integer.parseInt(parse[2]);
                                 startToken=Integer.parseInt(parse[1])/2;
                             }
+                            System.out.println(counter);
                             counter--;
+                            
+                            if(counter==0)
+                            {
+                                if (maxSize == 0)
+                                {
+                                    startToken=0;
+                                    endToken=(int) Math.pow(2, 31);
+                                }
+                                 else
+                                {
+                                    try {
+                                        client.connect(5000, IPmaxSize, tcpServer, udpServer);
+                                    } catch (IOException ex) {
+                                        Logger.getLogger(serverSide.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                    // minta data
+                                       //Buat sebuah paket message
+                                    PacketMessage packetMessage = new PacketMessage();
+
+                                    //Buat sebuah pesannya
+                                    packetMessage.message = "get";
+
+                                    //Kirim pesannya
+                                    client.sendTCP(packetMessage);
+
+                                }
+                            }
+                            
                         }
                         else if(parse[0].equals("get") && parse.length==1)
                         {
