@@ -60,6 +60,8 @@ public class serverSide extends Listener
         //register packet class
         server1.getKryo().register(PacketMessage.class);
         
+        server1.getKryo().register(HashMap.class);
+        
         //binding port ke port server
         server1.bind(tcpServer, udpServer);
         
@@ -81,38 +83,45 @@ public class serverSide extends Listener
         //client start
         client.start();
 
-        String ip = "192.168.0.102";
-        String ip2 = "127.0.0.1";
-       
+        ArrayList<String> ip=new ArrayList<>(); 
+        ip.add("192.168.0.102");
+        ip.add("127.0.0.1");
+        
+        
         //Mencoba melakukan koneksi dengan server jika gagal atau server masih belum nyala
         //akan menampilkan pesan
-        try 
+        for (int i = 0; i < ip.size(); i++)
         {
-            client.connect(5000, ip, tcpServer, udpServer);
-            //client.connect(5000, ip2, tcpPort, udpPort);
-            System.out.println("Menunggu paket dari server\n");
-        } 
-        catch (Exception e) 
-        {
-            System.out.println("Server belum siap");
+
+                try 
+                {
+                    client.connect(5000, ip.get(i), tcpServer, udpServer);
+                    // minta data
+                    if (!ip.get(i).equals(client.getRemoteAddressTCP().getAddress().getHostAddress()))
+                    {
+                           //Buat sebuah paket message
+                           PacketMessage packetMessage = new PacketMessage();
+
+                           //Buat sebuah pesannya
+                           packetMessage.message = "get";
+                           //c.sendTCP(packetMessage);
+                           client.sendTCP(packetMessage);
+                    }
+                    
+                }
+                catch (Exception e) 
+                {
+                    System.out.println("Server "+ip.get(i)+" belum siap");
+                }
+
         }
-
         client.addListener(new serverSide());
-
-        
     }
     
     //Ini dijalankan kalo dapet koneksi
     public void connected(Connection c)
     {
         System.out.println("Received a connection from "+c.getRemoteAddressTCP().getHostName());
-        c.getRemoteAddressTCP().getPort();
-        //Buat sebuah paket message
-        PacketMessage packetMessage = new PacketMessage();
-        
-        //Buat sebuah pesannya
-        packetMessage.message = "Connected to Server at "+new Date().toString();
-        System.out.print(c.getRemoteAddressTCP().getPort());
         //Kirim pesannya
         //c.sendTCP(packetMessage);
     }
