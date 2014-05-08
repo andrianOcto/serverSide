@@ -91,7 +91,7 @@ public class serverSide extends Listener
         
         //Buat sebuah pesannya
         packetMessage.message = "Connected to Server at "+new Date().toString();
-    
+        System.out.print(c.getRemoteAddressTCP().getPort());
         //Kirim pesannya
         //c.sendTCP(packetMessage);
     }
@@ -324,7 +324,7 @@ public class serverSide extends Listener
 
             //Kirim pesannya
             client.sendTCP(packetMessage);
-            feswfwsefsfese;
+            
             
         }
     }
