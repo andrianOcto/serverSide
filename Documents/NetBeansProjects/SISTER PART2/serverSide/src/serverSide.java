@@ -39,7 +39,7 @@ public class serverSide extends Listener
     
     static int statusServer=0;
     //representasi database dengan struktur HashMap<NamaTabel, Isi tabel>
-    HashMap<String,HashMap<String, ArrayList<String>>> database=new HashMap<>();
+    static HashMap<String,HashMap<String, ArrayList<String>>> database=new HashMap<>();
     public static void main(String[] args) throws Exception
     {
         //  HIDUPIN SERVER BUAT DENGERIN CLIENT
@@ -89,23 +89,39 @@ public class serverSide extends Listener
 
         //mendaftarkan kelas PacketMessage ke dalam jaringan agar mau terkirim di jaringan
         client.getKryo().register(PacketMessage.class);
-
+        client.getKryo().register(HashMap.class);
+        
         //client start
         client.start();
 
         ArrayList<String> ip=new ArrayList<>(); 
-        ip.add("192.168.0.102");
+        ArrayList<Client> allClient=new ArrayList<>();
         ip.add("192.168.0.101");
+        ip.add("192.168.0.102");
+
+        
         
         
         //Mencoba melakukan koneksi dengan server jika gagal atau server masih belum nyala
         //akan menampilkan pesan
         for (int i = 0; i < ip.size(); i++)
         {
-           
+                //  HIDUPIN CLIENT
+
+                Client clientD = new Client();
+
+                //mendaftarkan kelas PacketMessage ke dalam jaringan agar mau terkirim di jaringan
+                clientD.getKryo().register(PacketMessage.class);
+                
+                clientD.getKryo().register(HashMap.class);
+                
+                 clientD.addListener(new serverSide());   
+                 //client start
+                new Thread(clientD).start();
+                allClient.add(clientD);
                 try 
                 {              
-                    client.connect(5000, ip.get(i), tcpServer, udpServer);
+                    allClient.get(i).connect(5000, ip.get(i), tcpServer, udpServer);
                     // minta data
                        //Buat sebuah paket message
                     counter++;
@@ -113,9 +129,9 @@ public class serverSide extends Listener
 
                     //Buat sebuah pesannya
                     packetMessage.message = "size";
-
+                    
                     //Kirim pesannya
-                    client.sendTCP(packetMessage);
+                    allClient.get(i).sendTCP(packetMessage);
                     
                 
                 }
@@ -130,7 +146,35 @@ public class serverSide extends Listener
         //}
         System.out.print(counter);
         
-       
+        while(counter!=0)
+        {
+            Thread.sleep(100);
+        }
+       if (maxSize == 0)
+            {
+                startToken=0;
+                endToken=(int) Math.pow(2, 31);
+            }
+             else
+            {
+                for (Client client1 : allClient) {
+                    client1.close();}
+                         // minta data
+                         //Buat sebuah paket message
+                         PacketMessage packetMessage = new PacketMessage();
+
+                         //Buat sebuah pesannya
+                         packetMessage.message = "get";
+                         
+                         //Kirim pesannya
+                         client.connect(5000, IPmaxSize, tcpServer, udpServer);
+                         client.sendTCP(packetMessage);
+                    
+                
+        client.addListener(new serverSide());
+               
+                
+            }
         client.addListener(new serverSide());
         System.out.println(startToken+" "+endToken);
     }
@@ -148,12 +192,14 @@ public class serverSide extends Listener
     {
         if(p instanceof HashMap)
         {
-            database=(HashMap<String, HashMap<String, ArrayList<String>>>) p;
+             System.out.println("database sudah diterima dari"+c.getRemoteAddressTCP().getAddress().getHostAddress());
+             database=(HashMap<String, HashMap<String, ArrayList<String>>>) p;
+           
         }
         if(p instanceof PacketMessage)
 		{
 			PacketMessage packet = (PacketMessage) p;
-			System.out.println("Received : "+packet.message);
+			System.out.println("Received : "+packet.message+" "+c.getRemoteAddressTCP().getHostString());
                         
 						//buat variable buat cek
 						boolean cek=false;
@@ -203,59 +249,41 @@ public class serverSide extends Listener
                             if(maxSize<Integer.parseInt(parse[1]))
                             {
                                 maxSize=Integer.parseInt(parse[1]);
-                                IPmaxSize=c.getRemoteAddressTCP().getHostString();
+                                IPmaxSize=c.getRemoteAddressTCP().getAddress().getHostAddress();
                                 endToken=Integer.parseInt(parse[2]);
                                 startToken=Integer.parseInt(parse[1])/2;
                             }
                             System.out.println(counter);
                             counter--;
                             
-                            if(counter==0)
-                            {
-                                if (maxSize == 0)
-                                {
-                                    startToken=0;
-                                    endToken=(int) Math.pow(2, 31);
-                                }
-                                 else
-                                {
-                                    try {
-                                        client.connect(5000, IPmaxSize, tcpServer, udpServer);
-                                    } catch (IOException ex) {
-                                        Logger.getLogger(serverSide.class.getName()).log(Level.SEVERE, null, ex);
-                                    }
-                                    // minta data
-                                       //Buat sebuah paket message
-                                    PacketMessage packetMessage = new PacketMessage();
 
-                                    //Buat sebuah pesannya
-                                    packetMessage.message = "get";
-
-                                    //Kirim pesannya
-                                    client.sendTCP(packetMessage);
-
-                                }
-                            }
                             
                         }
                         else if(parse[0].equals("get") && parse.length==1)
                         {
-                            endToken=(endToken-startToken)/2;
-                            HashMap<String,HashMap<String, ArrayList<String>>> databaseKirim=database;
+                            endToken=(endToken-startToken)/2; 
+                            ArrayList<String> listTabel=new ArrayList<>();
+                            ArrayList<String> isiTabel=new ArrayList<>();
+                            HashMap<String,HashMap<String, ArrayList<String>>> databaseKirim=(HashMap<String,HashMap<String, ArrayList<String>>>) database.clone();
                             for (Map.Entry<String,HashMap<String, ArrayList<String>>> entry : databaseKirim.entrySet()) {
+                               
                                 for (Map.Entry<String, ArrayList<String>> entry1 : entry.getValue().entrySet()) {
                                     int code = Math.abs(entry1.getKey().hashCode());
-                                    if (code >= startToken && code < endToken)
+                                    if (!(code >= startToken && code < endToken))
                                     {
-                                        databaseKirim.get(entry.getKey()).remove(entry1.getKey());
+                                        listTabel.add(entry.getKey());
+                                        isiTabel.add(entry1.getKey());
+                                        //databaseKirim.get(entry.getKey()).remove(entry1.getKey());
                                     }
-                                    else
-                                    {
-                                        database.get(entry.getKey()).remove(entry1.getKey());
-                                    }
+
                                 }
                             }
+                            
                             c.sendTCP(databaseKirim);
+                            for(int i=0;i<listTabel.size();i++)
+                            {
+                                database.get(listTabel.get(i)).remove(isiTabel.get(i));
+                            }
                         }
                         //kalau semua command tidak tepat
                         else
